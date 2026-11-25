@@ -170,6 +170,7 @@ h1 { font-size: 22px; font-weight: 600; margin-bottom: 4px; color: #0f172a; }
   max-height: calc(100vh - 390px);
 }
 table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; min-width: 1980px; }
+#grid-table { table-layout: fixed; width: max-content; min-width: 0; }
 thead { position: sticky; top: 0; z-index: 1; }
 th {
   text-align: left;
@@ -198,7 +199,6 @@ td { padding: 9px 10px; border-bottom: 1px solid #f1f5f9; vertical-align: middle
   line-height: 39px;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 240px;
 }
 #grid-body tr.v-pad td {
   height: auto;
@@ -223,8 +223,8 @@ td.cell[data-field="Date"]:hover,
 td.cell[data-field="Registration"]:hover,
 td.cell[data-field="Customer Name"]:hover,
 td.cell[data-field="Model"]:hover { background: #fef9c3; box-shadow: inset 0 0 0 1px #f59e0b; }
-td.remarks { max-width: 240px; overflow: hidden; text-overflow: ellipsis; }
-td.items { min-width: 220px; max-width: 320px; white-space: nowrap; }
+td.remarks { overflow: hidden; text-overflow: ellipsis; }
+td.items { white-space: nowrap; }
 textarea.cell-edit { min-width: 220px; min-height: 72px; resize: vertical; }
 .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; }
 .pill-free { background: #dbeafe; color: #1e40af; }

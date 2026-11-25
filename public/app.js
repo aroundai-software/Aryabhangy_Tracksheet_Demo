@@ -349,6 +349,55 @@ function markSort() {
   });
 }
 
+const COL_FLOOR = [52, 86, 120, 110, 120, 110, 168, 56, 176, 110, 96, 168, 196, 180, 240, 110, 118, 118, 96, 112, 240, 46];
+const COL_HEADER = ["#", "JC", "DATE", "REG", "CUSTOMER", "MODEL", "SERVICE", "RPT", "BOOKING", "ADVISER", "TECH", "FINAL INSP", "STATUS", "VAS", "ITEMS", "BILL #", "LABOUR (₹)", "SPARES (₹)", "PAY", "TOTAL (₹)", "REMARKS", ""];
+const FIT_KEYS = {
+  3: "registration",
+  4: "customer_name",
+  5: "model",
+  6: "service_type",
+  8: "booking_source",
+  9: "adviser",
+  10: "technician",
+};
+const CELL_FONT = '13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+const HEAD_FONT = '600 11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+let fitRev = -1;
+let textMeasure;
+
+function textWidth(value, font) {
+  if (!textMeasure) textMeasure = document.createElement("canvas").getContext("2d");
+  textMeasure.font = font;
+  return textMeasure.measureText(String(value || "")).width;
+}
+
+function fitColumns() {
+  if (fitRev === state.rev) return;
+  const widths = COL_FLOOR.slice();
+  const widest = {};
+  Object.entries(FIT_KEYS).forEach(([index, key]) => {
+    let best = 0;
+    for (let i = 0; i < state.cards.length; i++) {
+      const size = textWidth(state.cards[i][key], CELL_FONT);
+      if (size > best) best = size;
+    }
+    widest[index] = best;
+  });
+  widths.forEach((floor, index) => {
+    const header = textWidth(COL_HEADER[index], HEAD_FONT) + 22;
+    const content = widest[index] == null ? 0 : widest[index] + (Number(index) === 6 ? 36 : 28);
+    widths[index] = Math.ceil(Math.max(floor, header, content));
+  });
+  const cols = $("grid-cols").children;
+  let total = 0;
+  widths.forEach((width, index) => {
+    cols[index].style.width = width + "px";
+    total += width;
+  });
+  $("grid-table").style.width = total + "px";
+  fitRev = state.rev;
+}
+
 function rowHtml(card) {
   const locked = card.status === "Delivered";
   const classes = ["data-row"];
@@ -436,6 +485,7 @@ function refreshView() {
 
 function render() {
   if (!state.meta) return;
+  fitColumns();
   const stamp = filterStamp();
   const filterChanged = stamp !== view.filter;
   refreshView();

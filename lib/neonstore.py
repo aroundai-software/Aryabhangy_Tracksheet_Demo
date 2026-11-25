@@ -351,6 +351,40 @@ def add_new_cards(cards):
     return len(inserted)
 
 
+def changed_cards(since):
+    since = (since or "").strip()
+    if len(since) > 40:
+        raise ValueError("The update check could not be read.")
+    with connect() as connection:
+        with connection.cursor(cursor_factory=RealDictCursor) as cursor:
+            cursor.execute("SELECT NOW() AS now")
+            now = cursor.fetchone()["now"]
+            rows = []
+            if since:
+                cursor.execute(
+                    """
+                    SELECT * FROM job_cards
+                    WHERE updated_at > %s
+                    ORDER BY updated_at, id
+                    LIMIT 2001
+                    """,
+                    (since,),
+                )
+                rows = cursor.fetchall()
+    more = len(rows) > 2000
+    return {
+        "cards": [as_card(row) for row in rows[:2000]],
+        "now": _iso_stamp(now),
+        "more": more,
+    }
+
+
+def _iso_stamp(value):
+    if isinstance(value, datetime):
+        return value.isoformat()
+    return str(value)
+
+
 def read_page(params):
     try:
         size = min(200, max(1, int((params.get("size") or ["200"])[0])))

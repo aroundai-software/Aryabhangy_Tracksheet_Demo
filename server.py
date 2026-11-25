@@ -229,6 +229,9 @@ def init_db():
         con.execute(
             "CREATE UNIQUE INDEX IF NOT EXISTS job_cards_source_row ON job_cards(source_row_id)"
         )
+        con.execute(
+            "CREATE INDEX IF NOT EXISTS job_cards_updated_at ON job_cards(updated_at)"
+        )
 
 
 def renumber(con, branch, on_date):
@@ -723,6 +726,26 @@ def _fill_one(con, card):
     return len(open_rows)
 
 
+def changed_cards(since):
+    now = datetime.now().isoformat(timespec="seconds")
+    if not since:
+        return {"cards": [], "now": now, "more": False}
+    if len(since) > 40:
+        raise ValueError("The update check could not be read.")
+    with connect() as con:
+        rows = con.execute(
+            """
+            SELECT * FROM job_cards
+            WHERE updated_at > ?
+            ORDER BY updated_at, id
+            LIMIT 2001
+            """,
+            (since,),
+        ).fetchall()
+    more = len(rows) > 2000
+    return {"cards": [row_dict(row) for row in rows[:2000]], "now": now, "more": more}
+
+
 def list_rows(where="", args=()):
     with connect() as con:
         rows = con.execute(
@@ -800,6 +823,10 @@ class Handler(BaseHTTPRequestHandler):
                 return
             if method == "GET" and path == "/api/local/cards":
                 self.send_json(200, [row_dict(row) for row in list_rows()])
+                return
+            if method == "GET" and path == "/api/local/changes":
+                since = (parse_qs(parsed.query).get("since") or [""])[0]
+                self.send_json(200, changed_cards(since))
                 return
             if method == "POST" and path == "/api/local/cards":
                 self.create_card()

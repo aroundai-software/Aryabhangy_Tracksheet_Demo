@@ -96,6 +96,11 @@ def card_delete(handler):
     send_json(handler, 200, {"ok": True})
 
 
+def changes_get(handler):
+    since = (query(handler).get("since") or [""])[0]
+    send_json(handler, 200, neonstore.changed_cards(since))
+
+
 def sync_post(handler):
     try:
         dates = livesheet.read_dates(neonstore.latest_date())

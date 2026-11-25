@@ -983,6 +983,10 @@ async function syncNewCards() {
 }
 
 async function load() {
+  const stamp = await fetch("/api/local/changes");
+  if (!stamp.ok) throw new Error("The job cards could not be loaded.");
+  const clock = await stamp.json();
+  state.since = clock.now;
   const [metaResponse, cards] = await Promise.all([
     fetch("/api/local/meta"),
     fetchCards(),
@@ -995,6 +999,54 @@ async function load() {
   render();
   markSync("Local copy", "saved");
 }
+
+function applyChanged(cards) {
+  const byId = new Map();
+  state.cards.forEach((card, index) => byId.set(card.id, index));
+  cards.forEach((raw) => {
+    const card = prepare(raw);
+    const index = byId.get(card.id);
+    if (index == null) state.cards.push(card);
+    else state.cards[index] = card;
+  });
+  state.rev += 1;
+  render();
+}
+
+let changeTask = null;
+
+function refreshChanges() {
+  if (!state.since || changeTask) return changeTask;
+  changeTask = pullChanges().finally(() => { changeTask = null; });
+  return changeTask;
+}
+
+async function pullChanges() {
+  const response = await fetch("/api/local/changes?since=" + encodeURIComponent(state.since));
+  if (!response.ok) return;
+  const data = await response.json();
+  state.since = data.now || state.since;
+  if (data.more) {
+    await load();
+    return;
+  }
+  if (data.cards && data.cards.length) applyChanged(data.cards);
+}
+
+let leftPage = false;
+window.addEventListener("blur", () => { leftPage = true; });
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden") leftPage = true;
+  else if (leftPage) {
+    leftPage = false;
+    refreshChanges();
+  }
+});
+window.addEventListener("focus", () => {
+  if (!leftPage) return;
+  leftPage = false;
+  refreshChanges();
+});
 
 tick();
 setInterval(tick, 30000);

@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Aryabhangy Tracksheet</title>
+  <link rel="stylesheet" href="/app.css">
+</head>
+<body>
+  <div id="app" class="app">
+    <div class="topbar">
+      <div class="brand"><span class="brand-badge">A</span> Arya Bhangy <small>Tracksheet</small></div>
+      <div class="right">
+        <span id="topbar-clock"></span>
+        <span class="sync saved" id="sync-status">Local copy</span>
+      </div>
+    </div>
+    <div class="sidebar">
+      <div class="logo">Tracksheet</div>
+      <div class="nav-item active">📋 Job Cards</div>
+    </div>
+    <div class="main">
+      <div id="view-grid" class="view on">
+        <h1>Job Cards</h1>
+        <div class="subtitle" id="grid-subtitle">All branches • Today + open • Click any cell to edit</div>
+        <div class="kpi-grid">
+          <div class="kpi">
+            <div class="kpi-label">Today's vehicles</div>
+            <div class="kpi-value" id="jcw-today">—</div>
+            <div class="kpi-delta">JCs opened today<span id="jcw-scope-label"></span></div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-label">Pending vehicles</div>
+            <div class="kpi-value" id="jcw-open">—</div>
+            <div class="kpi-delta" id="jcw-open-sub">open, all dates</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-label">Delivered today</div>
+            <div class="kpi-value" id="jcw-delivered">—</div>
+            <div class="kpi-delta" id="jcw-delivered-pct">—</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-label">Same-day delivery</div>
+            <div class="kpi-value" id="jcw-sameday">—</div>
+            <div class="kpi-delta">opened &amp; delivered today</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-label">Adviser split — today</div>
+            <div class="pie-row">
+              <div id="jcw-pie"></div>
+              <div id="jcw-pie-legend"></div>
+            </div>
+          </div>
+        </div>
+        <div class="status-strip" id="status-strip"></div>
+        <div class="toolbar">
+          <input id="search" type="text" placeholder="🔍 Search name, reg, JC…" style="width: 240px;">
+          <button type="button" class="fs-btn" id="fs-btn-grid">⚙ Filter &amp; sort<span class="fs-badge" id="fs-badge-grid"></span></button>
+          <button type="button" class="fs-btn" id="grid-clear-all" style="display:none;">✕ Clear all</button>
+          <select id="filter-date">
+            <option value="today">Today + open</option>
+            <option value="yesterday">Yesterday</option>
+            <option value="7d">Last 7 days</option>
+            <option value="month">This month</option>
+            <option value="">All time</option>
+          </select>
+          <select id="filter-branch"><option value="">All branches</option></select>
+          <select id="filter-service"><option value="">All service types</option></select>
+          <select id="filter-booking"><option value="">All booking sources</option></select>
+          <select id="filter-status"><option value="">All status</option></select>
+          <select id="filter-adviser"><option value="">All advisers</option></select>
+          <span class="count" id="grid-count"></span>
+          <button type="button" id="btn-excel" class="excel" title="Download the rows on screen. Excel opens the CSV.">⬇ Excel</button>
+          <button type="button" id="btn-new">+ New Job Card</button>
+        </div>
+        <div class="card" id="grid-scroll">
+          <table id="grid-table">
+            <thead>
+              <tr>
+                <th data-sort="Day Serial" title="Serial for the day — first JC opened is 1, resets daily">#<span class="sort-ind"></span></th>
+                <th data-sort="JC Number">JC<span class="sort-ind"></span></th>
+                <th data-sort="Date">Date<span class="sort-ind"></span></th>
+                <th data-sort="Registration">Reg<span class="sort-ind"></span></th>
+                <th data-sort="Customer Name">Customer<span class="sort-ind"></span></th>
+                <th data-sort="Model">Model<span class="sort-ind"></span></th>
+                <th data-sort="Service Type">Service<span class="sort-ind"></span></th>
+                <th data-sort="Repeat Complaint" title="Repeat complaint — same reg within 2 weeks">RPT</th>
+                <th data-sort="Booking Source">Booking<span class="sort-ind"></span></th>
+                <th data-sort="Adviser">Adviser<span class="sort-ind"></span></th>
+                <th data-sort="Technician">Tech<span class="sort-ind"></span></th>
+                <th data-sort="Final Inspection">Final Insp<span class="sort-ind"></span></th>
+                <th data-sort="Status">Status<span class="sort-ind"></span></th>
+                <th>VAS</th>
+                <th data-sort="Items">Items<span class="sort-ind"></span></th>
+                <th data-sort="Bill Number">Bill #<span class="sort-ind"></span></th>
+                <th data-sort="Labour">Labour (₹)<span class="sort-ind"></span></th>
+                <th data-sort="Spares">Spares (₹)<span class="sort-ind"></span></th>
+                <th data-sort="Payment Mode">Pay<span class="sort-ind"></span></th>
+                <th data-sort="Total">Total (₹)<span class="sort-ind"></span></th>
+                <th data-sort="Complaints / Remarks">Remarks<span class="sort-ind"></span></th>
+                <th title="Delete a duplicate / accidental entry"></th>
+              </tr>
+            </thead>
+            <tbody id="grid-body">
+              <tr><td colspan="22"><div class="loading"><span class="spinner"></span>Loading job cards…</div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modal-newjc">
+    <div class="modal">
+      <div class="modal-head">
+        <h2>New Job Card</h2>
+        <button class="modal-close" id="newjc-close" type="button">×</button>
+      </div>
+      <form id="newjc-form">
+        <div id="jc-dupe-banner"></div>
+        <div class="form-grid">
+          <div class="form-row" id="row-jcbranch">
+            <label>Branch <span class="req">*</span></label>
+            <select id="f-branch"></select>
+          </div>
+          <div class="form-row" id="row-svcat">
+            <label>Serviced at <span class="opt">(only if another branch does the work)</span></label>
+            <select id="f-svcat"></select>
+          </div>
+          <div class="form-row" id="row-jcno">
+            <label>JC number <span class="req">*</span></label>
+            <input id="f-jcno" type="text" inputmode="numeric" placeholder="6-digit no. from HiRise" autocomplete="off">
+            <div class="hint" id="jcno-status">Type the digits — zeros fill in front (e.g. 7153 → 007153)</div>
+          </div>
+          <div class="form-row">
+            <label>Registration <span class="req">*</span></label>
+            <input id="f-reg" type="text" placeholder="e.g. KL40X4899" autocomplete="off">
+            <div class="hint" id="reg-status">Type to look up an existing vehicle</div>
+          </div>
+          <div class="form-row">
+            <label>Customer name <span class="req">*</span></label>
+            <input id="f-name" type="text" autocomplete="off">
+          </div>
+          <div class="form-row">
+            <label>Model</label>
+            <select id="f-model"></select>
+          </div>
+          <div class="form-row">
+            <label>Service type <span class="req">*</span></label>
+            <select id="f-svc"></select>
+          </div>
+          <div class="form-row">
+            <label>JC date <span class="req">*</span></label>
+            <input id="f-jcdate" type="date">
+          </div>
+          <div class="form-row" id="row-claim" style="display:none;">
+            <label>Claim type <span class="req">*</span></label>
+            <select id="f-claim">
+              <option value="Insurance">Insurance claim</option>
+              <option value="Third party">Third-party claim</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label>Adviser <span class="req">*</span></label>
+            <select id="f-adv"></select>
+          </div>
+          <div class="form-row">
+            <label>Booking source</label>
+            <select id="f-booking"></select>
+          </div>
+          <div class="form-row">
+            <label>Technician <span class="opt">(can assign later)</span></label>
+            <select id="f-tech"></select>
+          </div>
+          <div class="form-row full">
+            <label>VAS canvassed (tap to toggle)</label>
+            <div class="chip-grid" id="vas-chips"></div>
+          </div>
+          <div class="form-row full">
+            <label>Remarks</label>
+            <textarea id="f-remarks" rows="2"></textarea>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button type="submit" class="btn btn-primary">Save Job Card</button>
+          <button type="button" class="btn btn-secondary" id="newjc-cancel">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modal-fs">
+    <div class="modal">
+      <div class="modal-head">
+        <h2>Filter &amp; sort</h2>
+        <button class="modal-close" id="fs-close" type="button">×</button>
+      </div>
+      <div id="fs-conds"></div>
+      <button type="button" class="btn btn-secondary" id="fs-add">+ Condition</button>
+      <div class="form-grid" style="margin-top:16px;">
+        <div class="form-row">
+          <label>Sort by</label>
+          <select id="fs-sort-field"></select>
+        </div>
+        <div class="form-row">
+          <label>Direction</label>
+          <select id="fs-sort-dir">
+            <option value="asc">Ascending</option>
+            <option value="desc">Descending</option>
+          </select>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button type="button" class="btn btn-primary" id="fs-apply">Apply</button>
+        <button type="button" class="btn btn-secondary" id="fs-reset">Clear conditions</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+  <script src="/app.js"></script>
+</body>
+</html>

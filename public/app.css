@@ -41,6 +41,17 @@ input, select, textarea { font: inherit; }
 }
 #topbar-clock { font-weight: 600; color: #0f172a; }
 .topbar .sync { font-size: 11px; color: #94a3b8; }
+.topbar .sync-btn {
+  border: 1px solid #d61f26;
+  background: #d61f26;
+  color: white;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.topbar .sync-btn:hover { background: #b81a20; }
+.topbar .sync-btn:disabled { opacity: 0.65; cursor: default; }
 .topbar .sync.saving { color: #f59e0b; }
 .topbar .sync.saved { color: #059669; }
 .topbar .sync.error { color: #dc2626; }

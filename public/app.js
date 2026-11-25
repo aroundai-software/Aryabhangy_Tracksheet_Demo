@@ -822,6 +822,7 @@ function bind() {
     if (cell) startEdit(cell, card);
   });
   $("btn-new").addEventListener("click", openNew);
+  $("btn-sync").addEventListener("click", syncNewCards);
   $("btn-excel").addEventListener("click", exportRows);
   $("newjc-close").addEventListener("click", closeNew);
   $("newjc-cancel").addEventListener("click", closeNew);
@@ -952,6 +953,33 @@ async function fetchCards() {
   );
   rest.forEach((body) => cards.push(...(body.cards || [])));
   return cards;
+}
+
+async function syncNewCards() {
+  const button = $("btn-sync");
+  button.disabled = true;
+  button.textContent = "Checking…";
+  try {
+    const response = await fetch("/api/local/sync", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "{}",
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || "The new job cards could not be added.");
+    const added = Number(data.added) || 0;
+    if (added === 0) {
+      toast("No new job cards.");
+      return;
+    }
+    toast(added === 1 ? "1 new job card added." : added + " new job cards added.");
+    await load();
+  } catch (error) {
+    toast(error.message, true);
+  } finally {
+    button.disabled = false;
+    button.textContent = "Get new job cards";
+  }
 }
 
 async function load() {

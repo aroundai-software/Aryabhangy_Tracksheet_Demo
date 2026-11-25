@@ -6,7 +6,7 @@ from datetime import date, datetime
 from decimal import Decimal
 
 import psycopg2
-from psycopg2.extras import Json, RealDictCursor
+from psycopg2.extras import Json, RealDictCursor, execute_values
 
 import server
 
@@ -298,6 +298,57 @@ def delete_card(card_id):
             _renumber(cursor, current["branch"], _iso(current["on_date"]))
         connection.commit()
     return True
+
+
+def latest_date():
+    with connect() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT MAX(on_date) FROM job_cards")
+            found = cursor.fetchone()[0]
+    if isinstance(found, datetime):
+        return found.date()
+    return found
+
+
+def add_new_cards(cards):
+    """Insert cards the demo does not already have. Existing rows are not changed."""
+    if not cards:
+        return 0
+    values = [
+        (
+            card["source_row_id"], card["jc_number"], card["on_date"], card["registration"],
+            card["customer_name"], card["model"], card["branch"], card["service_type"],
+            card["booking_source"], card["adviser"], card["technician"],
+            card["final_inspection"], card["repeat_complaint"],
+        )
+        for card in cards
+    ]
+    with connect() as connection:
+        with connection.cursor() as cursor:
+            inserted = execute_values(
+                cursor,
+                """
+                INSERT INTO job_cards (
+                    source_row_id, jc_number, on_date, registration, customer_name,
+                    model, branch, service_type, booking_source, adviser, technician,
+                    final_inspection, repeat_complaint, status
+                ) VALUES %s
+                ON CONFLICT (source_row_id) DO NOTHING
+                RETURNING branch, on_date
+                """,
+                values,
+                template="(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'Received')",
+                fetch=True,
+            )
+            seen = set()
+            for branch, on_date in inserted:
+                key = (branch, _iso(on_date))
+                if key in seen or not key[0] or not key[1]:
+                    continue
+                seen.add(key)
+                _renumber(cursor, key[0], key[1])
+        connection.commit()
+    return len(inserted)
 
 
 def read_page(params):

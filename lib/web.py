@@ -5,7 +5,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from urllib.parse import parse_qs, urlencode, urlparse
 
-from lib import neonstore
+from lib import livesheet, neonstore
 import server
 
 
@@ -94,6 +94,16 @@ def card_delete(handler):
         send_json(handler, 404, {"error": "That job card is not on this copy."})
         return
     send_json(handler, 200, {"ok": True})
+
+
+def sync_post(handler):
+    try:
+        dates = livesheet.read_dates(neonstore.latest_date())
+        cards = livesheet.cards_on(dates)
+        added = neonstore.add_new_cards(cards)
+    except livesheet.LiveError as error:
+        raise ValueError(str(error)) from error
+    send_json(handler, 200, {"added": added})
 
 
 def meta_get(handler):

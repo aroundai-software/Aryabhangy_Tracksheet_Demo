@@ -1,7 +1,8 @@
 """Local Job Cards website for testing.
 
 Serves the page and a read API shaped like the live Tracksheet. All rows stay in
-trackdemo.db next to this file. This process never calls the live site.
+trackdemo.db next to this file. Get new job cards is the only live read, and it
+never writes to the live site.
 """
 
 import gzip
@@ -223,6 +224,11 @@ def init_db():
         columns = {row[1] for row in con.execute("PRAGMA table_info(job_cards)")}
         if "items" not in columns:
             con.execute("ALTER TABLE job_cards ADD COLUMN items TEXT NOT NULL DEFAULT ''")
+        if "source_row_id" not in columns:
+            con.execute("ALTER TABLE job_cards ADD COLUMN source_row_id INTEGER")
+        con.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS job_cards_source_row ON job_cards(source_row_id)"
+        )
 
 
 def renumber(con, branch, on_date):
@@ -236,6 +242,55 @@ def renumber(con, branch, on_date):
     ).fetchall()
     for serial, row in enumerate(rows, start=1):
         con.execute("UPDATE job_cards SET day_serial = ? WHERE id = ?", (serial, row["id"]))
+
+
+def latest_on_date():
+    with connect() as con:
+        found = con.execute("SELECT MAX(on_date) FROM job_cards").fetchone()[0]
+    if not found:
+        return None
+    return datetime.strptime(found, "%Y-%m-%d").date()
+
+
+def add_live_cards(cards):
+    """Insert cards this local copy does not already have. Existing rows stay as they are."""
+    if not cards:
+        return 0
+    added = 0
+    touched = set()
+    now = datetime.now().isoformat(timespec="seconds")
+    with connect() as con:
+        for card in cards:
+            cursor = con.execute(
+                """
+                INSERT INTO job_cards (
+                    source_row_id, jc_number, on_date, registration, customer_name,
+                    customer_phone, model, branch, serviced_at, service_type,
+                    booking_source, adviser, technician, status, final_inspection,
+                    claim, bill_number, labour, spares, bill_amount, payment_mode,
+                    vas, items, remarks, repeat_complaint, day_serial, delivered_on,
+                    updated_at
+                ) VALUES (
+                    ?, ?, ?, ?, ?, '', ?, ?, '', ?, ?, ?, ?, 'Received', ?,
+                    '', '', NULL, NULL, NULL, '', '[]', '', '', ?, 1, NULL, ?
+                )
+                ON CONFLICT (source_row_id) DO NOTHING
+                """,
+                (
+                    card["source_row_id"], card["jc_number"], card["on_date"],
+                    card["registration"], card["customer_name"], card["model"],
+                    card["branch"], card["service_type"], card["booking_source"],
+                    card["adviser"], card["technician"], card["final_inspection"],
+                    1 if card["repeat_complaint"] else 0, now,
+                ),
+            )
+            if cursor.rowcount:
+                added += 1
+                touched.add((card["branch"], card["on_date"]))
+        for branch, on_date in touched:
+            renumber(con, branch, on_date)
+        con.commit()
+    return added
 
 
 def row_dict(row):
@@ -752,6 +807,9 @@ class Handler(BaseHTTPRequestHandler):
             if method == "POST" and path == "/api/local/fill":
                 self.fill_request()
                 return
+            if method == "POST" and path == "/api/local/sync":
+                self.sync_new_cards()
+                return
             card_match = re.fullmatch(r"/api/local/cards/(\d+)", path)
             if card_match and method == "PATCH":
                 self.update_card(int(card_match.group(1)))
@@ -795,6 +853,17 @@ class Handler(BaseHTTPRequestHandler):
             summary = fill_cards(con, cards)
             con.commit()
         self.send_json(200, summary)
+
+    def sync_new_cards(self):
+        from lib import livesheet
+
+        try:
+            dates = livesheet.read_dates(latest_on_date())
+            cards = livesheet.cards_on(dates)
+            added = add_live_cards(cards)
+        except livesheet.LiveError as error:
+            raise ValueError(str(error)) from error
+        self.send_json(200, {"added": added})
 
     def create_card(self):
         body = self.read_body()
@@ -901,7 +970,7 @@ def main():
     server = ThreadingHTTPServer((HOST, PORT), Handler)
     print("Local Job Cards site")
     print(f"http://{HOST}:{PORT}")
-    print("This server does not connect to the live Tracksheet.")
+    print("Get new job cards reads the live site and does not write to it.")
     try:
         server.serve_forever()
     except KeyboardInterrupt:

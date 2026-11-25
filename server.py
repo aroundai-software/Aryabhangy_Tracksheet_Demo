@@ -14,7 +14,7 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlencode, urlparse
 
 ROOT = Path(__file__).resolve().parent
-STATIC = ROOT / "static"
+STATIC = ROOT / "public"
 DB_PATH = ROOT / "trackdemo.db"
 HOST = "127.0.0.1"
 PORT = 8765

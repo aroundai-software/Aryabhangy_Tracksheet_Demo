@@ -934,14 +934,34 @@ function syncFsDraft() {
   }));
 }
 
+async function fetchCards() {
+  const response = await fetch("/api/local/cards?page=1&size=2000");
+  if (!response.ok) throw new Error("The job cards could not be loaded.");
+  const data = await response.json();
+  if (Array.isArray(data)) return data;
+  const cards = data.cards || [];
+  const pages = Number(data.pages) || 1;
+  if (pages < 2) return cards;
+  const rest = await Promise.all(
+    Array.from({ length: pages - 1 }, (_, index) =>
+      fetch("/api/local/cards?page=" + (index + 2) + "&size=2000").then((item) => {
+        if (!item.ok) throw new Error("The job cards could not be loaded.");
+        return item.json();
+      })
+    )
+  );
+  rest.forEach((body) => cards.push(...(body.cards || [])));
+  return cards;
+}
+
 async function load() {
-  const [metaResponse, cardResponse] = await Promise.all([
+  const [metaResponse, cards] = await Promise.all([
     fetch("/api/local/meta"),
-    fetch("/api/local/cards"),
+    fetchCards(),
   ]);
-  if (!metaResponse.ok || !cardResponse.ok) throw new Error("The local job cards could not be loaded.");
+  if (!metaResponse.ok) throw new Error("The job cards could not be loaded.");
   state.meta = await metaResponse.json();
-  state.cards = (await cardResponse.json()).map(prepare);
+  state.cards = cards.map(prepare);
   state.rev += 1;
   fillFilters();
   render();

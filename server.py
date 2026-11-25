@@ -666,6 +666,34 @@ def _plate_key(value):
     return f"{state}{district.zfill(2)}{letters}{serial}"
 
 
+def matching_fill_rows(rows, card):
+    """Rows whose job card and plate match. KL7 and KL07 are the same plate.
+
+    The registration stored on the card is not changed. Delivered rows are refused.
+    """
+    jc = str(card.get("jc_number") or card.get("job_card") or "").strip()
+    raw_reg = str(card.get("registration") or card.get("vehicle") or "")
+    regs = []
+    for part in re.split(r"\s+and\s+", raw_reg, flags=re.IGNORECASE):
+        compact = _compact_reg(part)
+        if len(compact) >= 5:
+            regs.append(_plate_key(part))
+    chosen = list(rows)
+    if regs:
+        chosen = [row for row in chosen if _plate_key(row["registration"]) in regs]
+    else:
+        plates = {_plate_key(row["registration"]) for row in chosen}
+        plates.discard("")
+        if len(plates) > 1:
+            raise ValueError(f"JC {jc} is on more than one vehicle.")
+    open_rows = [row for row in chosen if row["status"] != "Delivered"]
+    if not open_rows:
+        if chosen:
+            raise ValueError(f"JC {jc} is delivered and locked.")
+        raise ValueError(f"JC {jc} is not on the Tracksheet.")
+    return open_rows
+
+
 def fill_cards(con, cards):
     """Write Bill, Labour, Spares, Total, VAS, and Items onto matching practice rows.
 
@@ -688,25 +716,8 @@ def fill_cards(con, cards):
 
 def _fill_one(con, card):
     jc = norm_jc(card.get("jc_number") or card.get("job_card"))
-    raw_reg = str(card.get("registration") or card.get("vehicle") or "")
-    regs = []
-    for part in re.split(r"\s+and\s+", raw_reg, flags=re.IGNORECASE):
-        compact = _compact_reg(part)
-        if len(compact) >= 5:
-            regs.append(_plate_key(part))
     rows = con.execute("SELECT * FROM job_cards WHERE jc_number = ?", (jc,)).fetchall()
-    if regs:
-        rows = [row for row in rows if _plate_key(row["registration"]) in regs]
-    else:
-        plates = {_plate_key(row["registration"]) for row in rows}
-        plates.discard("")
-        if len(plates) > 1:
-            raise ValueError(f"JC {jc} is on more than one vehicle.")
-    open_rows = [row for row in rows if row["status"] != "Delivered"]
-    if not open_rows:
-        if rows:
-            raise ValueError(f"JC {jc} is delivered and locked.")
-        raise ValueError(f"JC {jc} is not on the Tracksheet.")
+    open_rows = matching_fill_rows(rows, card)
     bill = text(card.get("bill_number") or card.get("bill"), 40)
     labour = _amount(card.get("labour"))
     spares = _amount(card.get("spares"))

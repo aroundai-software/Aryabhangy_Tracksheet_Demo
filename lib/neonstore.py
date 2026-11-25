@@ -286,6 +286,52 @@ def update_card(card_id, payload):
     return as_card(saved)
 
 
+def fill_cards(cards):
+    """Save Bill #, Labour, Spares, Total, VAS, and Items. Other columns stay."""
+    results = []
+    updated = 0
+    with connect() as connection:
+        with connection.cursor(cursor_factory=RealDictCursor) as cursor:
+            for card in cards or []:
+                jc_text = str(card.get("jc_number") or card.get("job_card") or "")
+                key = str(card.get("key") or "")
+                try:
+                    count = _fill_one(cursor, card)
+                except ValueError as error:
+                    results.append({"job_card": jc_text, "key": key, "ok": False, "error": str(error)})
+                    continue
+                updated += count
+                results.append({"job_card": jc_text, "key": key, "ok": True, "rows": count})
+        connection.commit()
+    return {"updated": updated, "results": results}
+
+
+def _fill_one(cursor, card):
+    jc = server.norm_jc(card.get("jc_number") or card.get("job_card"))
+    cursor.execute(
+        "SELECT id, registration, status FROM job_cards WHERE jc_number = %s",
+        (jc,),
+    )
+    open_rows = server.matching_fill_rows(cursor.fetchall(), card)
+    bill = server.text(card.get("bill_number") or card.get("bill"), 40)
+    labour = server._amount(card.get("labour"))
+    spares = server._amount(card.get("spares"))
+    total = server._amount(card.get("total"))
+    vas = server._vas_names(card.get("vas"))
+    items = server.item_text(card.get("items"), 4000)
+    for row in open_rows:
+        cursor.execute(
+            """
+            UPDATE job_cards
+            SET bill_number = %s, labour = %s, spares = %s, bill_amount = %s,
+                vas = %s, items = %s, updated_at = NOW()
+            WHERE id = %s
+            """,
+            (bill, labour, spares, total, Json(vas), items, row["id"]),
+        )
+    return len(open_rows)
+
+
 def delete_card(card_id):
     with connect() as connection:
         with connection.cursor(cursor_factory=RealDictCursor) as cursor:

@@ -101,6 +101,16 @@ def changes_get(handler):
     send_json(handler, 200, neonstore.changed_cards(since))
 
 
+def fill_post(handler):
+    body = read_body(handler, limit=8_000_000)
+    cards = body.get("cards") if isinstance(body, dict) else None
+    if not isinstance(cards, list) or not cards:
+        raise ValueError("Choose at least one job card.")
+    if len(cards) > 2000:
+        raise ValueError("That update is too large.")
+    send_json(handler, 200, neonstore.fill_cards(cards))
+
+
 def sync_post(handler):
     try:
         dates = livesheet.read_dates(neonstore.latest_date())

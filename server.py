@@ -459,12 +459,27 @@ def norm_date(value):
 
 
 def money(value):
+    """Keep paise. A whole-rupee round turned 924.71 into 925."""
     if value is None or value == "":
         return None
-    number = float(value)
+    number = float(str(value).replace(",", "").strip())
     if number < 0 or number > 10000000:
         raise ValueError("Enter a valid amount.")
-    return int(round(number))
+    return round(number, 2)
+
+
+def kept_bill_amount(current, labour, spares):
+    """Leave a stored total as it is. Labour + Spares fills an empty total only.
+
+    The compare app stores a with-GST total. Clicking Status, or opening
+    Spares and leaving the same figure, must not replace that total.
+    """
+    stored = money(current["bill_amount"]) if current is not None else None
+    if stored is not None:
+        return stored
+    if labour is None and spares is None:
+        return None
+    return round((labour or 0) + (spares or 0), 2)
 
 
 def one_of(value, options, label, required=False):
@@ -581,10 +596,7 @@ def clean_payload(con, payload, current=None):
         item["repeat_complaint"] = True
     if item["repeat_complaint"] and not item["remarks"]:
         raise ValueError("A remark is required for a repeat complaint.")
-    if item["labour"] is None and item["spares"] is None:
-        item["bill_amount"] = current["bill_amount"] if current else None
-    else:
-        item["bill_amount"] = (item["labour"] or 0) + (item["spares"] or 0)
+    item["bill_amount"] = kept_bill_amount(current, item["labour"], item["spares"])
     if item["status"] == "Delivered":
         problems = delivery_problems(item)
         if problems:

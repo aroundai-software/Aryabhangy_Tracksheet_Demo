@@ -103,7 +103,7 @@ function showDate(iso) {
 
 function money(value) {
   if (value == null || value === "") return "";
-  return Number(value).toLocaleString("en-IN");
+  return Number(value).toLocaleString("en-IN", { maximumFractionDigits: 2 });
 }
 
 function totalOf(card) {

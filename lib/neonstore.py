@@ -159,10 +159,7 @@ def _clean(connection, payload, current=None):
         item["repeat_complaint"] = True
     if item["repeat_complaint"] and not item["remarks"]:
         raise ValueError("A remark is required for a repeat complaint.")
-    if item["labour"] is None and item["spares"] is None:
-        item["bill_amount"] = _money(current["bill_amount"]) if current else None
-    else:
-        item["bill_amount"] = (item["labour"] or 0) + (item["spares"] or 0)
+    item["bill_amount"] = server.kept_bill_amount(current, item["labour"], item["spares"])
     if item["status"] == "Delivered":
         problems = server.delivery_problems(item)
         if problems:

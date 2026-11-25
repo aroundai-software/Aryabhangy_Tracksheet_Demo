@@ -286,23 +286,29 @@ function renderKpis() {
   const today = todayIso();
   const opened = [];
   let pending = 0;
+  let accident = 0;
   let deliveredCount = 0;
   let sameDayCount = 0;
   for (let i = 0; i < state.cards.length; i++) {
     const card = state.cards[i];
     if (state.branch && card.branch !== state.branch) continue;
     if (card.on_date === today) opened.push(card);
-    if (card.status === "Received" || card.status === "Pending") pending += 1;
+    if (card.status === "Received" || card.status === "Pending") {
+      pending += 1;
+      if (card.service_type === "Accident") accident += 1;
+    }
     if (card.status === "Delivered" && card.delivered_on === today) {
       deliveredCount += 1;
       if (card.on_date === today) sameDayCount += 1;
     }
   }
+  const percent = (count) => opened.length ? Math.round((count / opened.length) * 100) + "%" : "0%";
   $("jcw-today").textContent = opened.length;
   $("jcw-open").textContent = pending;
+  $("jcw-open-sub").textContent = "open, all dates · " + accident + " accident";
   $("jcw-delivered").textContent = deliveredCount;
-  $("jcw-delivered-pct").textContent = opened.length ? `${Math.round((sameDayCount / opened.length) * 100)}% of today's cards` : "—";
-  $("jcw-sameday").textContent = sameDayCount;
+  $("jcw-delivered-pct").textContent = percent(deliveredCount) + " of today";
+  $("jcw-sameday").textContent = percent(sameDayCount);
   $("jcw-scope-label").textContent = state.branch ? " · " + state.branch : "";
   const counts = {};
   opened.forEach((card) => { counts[card.adviser || "—"] = (counts[card.adviser || "—"] || 0) + 1; });
@@ -321,8 +327,8 @@ function renderKpis() {
     return `${COLORS[index % COLORS.length]} ${start}deg ${end}deg`;
   });
   $("jcw-pie").style.background = `conic-gradient(${stops.join(",")})`;
-  $("jcw-pie-legend").innerHTML = parts.map((part, index) =>
-    `<div><span style="color:${COLORS[index % COLORS.length]}">●</span> ${esc(part[0])} · ${part[1]}</div>`
+  $("jcw-pie-legend").innerHTML = parts.slice(0, 5).map((part, index) =>
+    `<div><span style="color:${COLORS[index % COLORS.length]}">●</span> ${esc(part[0])} ${part[1]}</div>`
   ).join("");
 }
 

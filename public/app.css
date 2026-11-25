@@ -95,9 +95,10 @@ h1 { font-size: 22px; font-weight: 600; margin-bottom: 4px; color: #0f172a; }
 .kpi-value { font-size: 26px; font-weight: 700; margin-top: 6px; line-height: 1; color: #0f172a; }
 .kpi-delta { font-size: 11px; margin-top: 6px; color: #64748b; }
 #jcw-scope-label { color: #d61f26; }
-.pie-row { display: flex; gap: 12px; align-items: center; margin-top: 4px; }
+.pie-row { display: flex; gap: 12px; align-items: center; margin-top: 8px; }
 #jcw-pie { width: 58px; height: 58px; border-radius: 50%; background: #e2e8f0; flex-shrink: 0; }
-#jcw-pie-legend { font-size: 11px; color: #475569; line-height: 1.5; }
+#jcw-pie-legend { display: flex; flex-wrap: wrap; gap: 2px 10px; font-size: 11px; color: #475569; line-height: 1.4; }
+#jcw-pie-legend div { white-space: nowrap; }
 .status-strip { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
 .schip {
   display: inline-flex;

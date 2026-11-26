@@ -7,7 +7,7 @@ body {
 }
 button { font: inherit; cursor: pointer; }
 input, select, textarea { font: inherit; }
-.app { display: grid; grid-template: 56px 1fr / 220px 1fr; height: 100vh; }
+.app { display: grid; grid-template: 56px 1fr / 1fr; height: 100vh; }
 .topbar {
   grid-column: 1 / -1;
   background: white;
@@ -55,26 +55,6 @@ input, select, textarea { font: inherit; }
 .topbar .sync.saving { color: #f59e0b; }
 .topbar .sync.saved { color: #059669; }
 .topbar .sync.error { color: #dc2626; }
-.sidebar { background: #0f172a; color: #cbd5e1; padding: 14px 0; }
-.sidebar .logo {
-  padding: 0 18px 14px;
-  font-weight: 700;
-  color: white;
-  font-size: 15px;
-  border-bottom: 1px solid #1e293b;
-  margin-bottom: 10px;
-}
-.nav-item {
-  padding: 10px 18px;
-  cursor: default;
-  user-select: none;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 13px;
-  border-left: 3px solid transparent;
-}
-.nav-item.active { background: #1e293b; color: white; border-left-color: #d61f26; }
 .main { padding: 22px 26px; overflow-y: auto; }
 h1 { font-size: 22px; font-weight: 600; margin-bottom: 4px; color: #0f172a; }
 .subtitle { color: #64748b; margin-bottom: 18px; font-size: 13px; }
@@ -395,7 +375,4 @@ textarea.cell-edit { min-width: 220px; min-height: 72px; resize: vertical; }
 }
 @media (max-width: 1100px) {
   .kpi-grid { grid-template-columns: 1fr 1fr; }
-  .app { grid-template: 56px auto 1fr / 1fr; }
-  .sidebar { display: flex; align-items: center; padding: 0; }
-  .sidebar .logo { border: 0; margin: 0; padding: 12px 18px; }
 }
